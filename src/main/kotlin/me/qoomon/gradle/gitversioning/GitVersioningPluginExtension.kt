@@ -12,7 +12,6 @@ import me.qoomon.gradle.gitversioning.GitVersioningPluginExtension.Companion.mat
 import org.apache.commons.configuration2.PropertiesConfiguration
 import org.apache.commons.configuration2.ex.ConfigurationException
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion
-import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.gradle.api.Action
 import org.gradle.api.Project
@@ -273,139 +272,14 @@ abstract class GitVersioningPluginExtension(
             return null
         }
         val repository = repositoryBuilder.build()
-        return object : GitSituation(repository, providers, objects) {
-
-            init {
-                handleEnvironment(repository)
-            }
-
-            @Throws(IOException::class)
-            private fun handleEnvironment(repository: Repository) {
-                // --- commandline arguments and environment variables
-
-                var overrideBranch = getCommandOption(OPTION_NAME_GIT_BRANCH)
-                var overrideTag = getCommandOption(OPTION_NAME_GIT_TAG)
-                if (overrideBranch != null || overrideTag != null) {
-                    overrideBranch =
-                        if (overrideBranch == null || overrideBranch.trim { it <= ' ' }.isEmpty()) {
-                            null
-                        } else {
-                            overrideBranch.trim { it <= ' ' }
-                        }
-                    setBranch(overrideBranch)
-                    overrideTag =
-                        if (overrideTag == null || overrideTag.trim { it <= ' ' }.isEmpty()) {
-                            null
-                        } else {
-                            overrideTag.trim { it <= ' ' }
-                        }
-                    setTags(listOfNotNull(overrideTag))
-                    return
-                }
-
-                val providedRef = getCommandOption(OPTION_NAME_GIT_REF)
-                if (providedRef != null) {
-                    require(providedRef.startsWith("refs/")) { "invalid provided ref $providedRef -  needs to start with refs/" }
-                    if (providedRef.startsWith("refs/tags/")) {
-                        setBranch(null)
-                        setTags(listOf(providedRef))
-                    } else {
-                        setBranch(providedRef)
-                        setTags(emptyList())
-                    }
-                    return
-                }
-
-                // --- try getting branch and tag situation from environment ---
-                // skip if we are on a branch
-                if (repository.branch == null) {
-                    return
-                }
-
-                // GitHub Actions support
-                if (System.getenv("GITHUB_ACTIONS").equals("true", ignoreCase = true)) {
-                    if (System.getenv("GITHUB_SHA") != rev) {
-                        return
-                    }
-                    logger.lifecycle("gather git situation from GitHub Actions environment variable: GITHUB_REF")
-                    val githubRef = System.getenv("GITHUB_REF")
-                    logger.debug("  GITHUB_REF: $githubRef")
-                    if (githubRef.startsWith("refs/tags/")) {
-                        addTag(githubRef)
-                    } else {
-                        setBranch(githubRef)
-                    }
-                    return
-                }
-
-                // GitLab CI support
-                if ("true".equals(System.getenv("GITLAB_CI"), ignoreCase = true)) {
-                    if (System.getenv("CI_COMMIT_SHA") != rev) {
-                        return
-                    }
-                    logger.lifecycle("gather git situation from GitLab CI environment variables: CI_COMMIT_BRANCH, CI_MERGE_REQUEST_SOURCE_BRANCH_NAME and CI_COMMIT_TAG")
-                    val commitBranch = System.getenv("CI_COMMIT_BRANCH")
-                    val commitTag = System.getenv("CI_COMMIT_TAG")
-                    val mrSourceBranch = System.getenv("CI_MERGE_REQUEST_SOURCE_BRANCH_NAME")
-                    logger.debug("  CI_COMMIT_BRANCH: $commitBranch")
-                    logger.debug("  CI_COMMIT_TAG: $commitTag")
-                    logger.debug("  CI_MERGE_REQUEST_SOURCE_BRANCH_NAME: $mrSourceBranch")
-                    commitBranch?.let { setBranch(it) } ?: (mrSourceBranch?.let { setBranch(it) }
-                        ?: commitTag?.let { addTag(it) })
-                    return
-                }
-
-                // Circle CI support
-                if ("true".equals(System.getenv("CIRCLECI"), ignoreCase = true)) {
-                    if (System.getenv("CIRCLE_SHA1") != rev) {
-                        return
-                    }
-                    logger.lifecycle("gather git situation from Circle CI environment variables: CIRCLE_BRANCH and CIRCLE_TAG")
-                    val commitBranch = System.getenv("CIRCLE_BRANCH")
-                    val commitTag = System.getenv("CIRCLE_TAG")
-                    logger.debug("  CIRCLE_BRANCH: $commitBranch")
-                    logger.debug("  CIRCLE_TAG: $commitTag")
-                    commitBranch?.let { setBranch(it) } ?: commitTag?.let { addTag(it) }
-                    return
-                }
-
-                // Jenkins support
-                if (System.getenv("JENKINS_HOME") != null && System.getenv("JENKINS_HOME").trim { it <= ' ' }
-                        .isNotEmpty()) {
-                    if (System.getenv("GIT_COMMIT") == rev) {
-                        return
-                    }
-                    logger.lifecycle("gather git situation from jenkins environment variables: BRANCH_NAME and TAG_NAME")
-                    val commitBranch = System.getenv("BRANCH_NAME")
-                    val commitTag = System.getenv("TAG_NAME")
-                    logger.debug("  BRANCH_NAME: $commitBranch")
-                    logger.debug("  TAG_NAME: $commitTag")
-                    if (commitBranch != null) {
-                        if (commitBranch == commitTag) {
-                            addTag(commitBranch)
-                        } else {
-                            setBranch(commitBranch)
-                        }
-                    } else commitTag?.let { addTag(it) }
-                    return
-                }
-            }
-
-            override fun setBranch(branch: String?) {
-                logger.debug("override git branch with $branch")
-                super.setBranch(branch)
-            }
-
-            override fun setTags(tags: List<String>) {
-                logger.debug("override git tags with single tag $tags")
-                super.setTags(tags)
-            }
-
-            override fun addTag(tag: String) {
-                logger.debug("add git tag $tag")
-                super.addTag(tag)
-            }
-        }
+        val gitSituation = objects.newInstance<GitSituation>(repository)
+        gitSituation.handleEnvironment(
+                    repository,
+                    overrideBranch = getCommandOption(OPTION_NAME_GIT_BRANCH),
+                    overrideTag = getCommandOption(OPTION_NAME_GIT_TAG),
+                    providedRef = getCommandOption(OPTION_NAME_GIT_REF),
+        )
+        return gitSituation
     }
 
     private fun getGitVersion(versionFormat: String, projectVersion: Provider<String>): Provider<String> {
@@ -497,13 +371,20 @@ abstract class GitVersioningPluginExtension(
         var value = System.getProperty(name)
         if (value == null) {
             val plainName = name.replaceFirst("^versioning\\.".toRegex(), "")
-            val environmentVariableName = ("VERSIONING_"
-                    + java.lang.String.join(
-                "_",
-                *plainName.split("(?=\\p{Lu})".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-            )
+            val environmentVariableName = plainName
+                .split("(?=\\p{Lu})".toRegex())
+                .dropLastWhile { it.isEmpty() }
+                .joinToString(separator = "_", prefix = "VERSIONING_")
                 .replace("\\.".toRegex(), "_")
-                .toUpperCase())
+                .toUpperCase()
+
+//            val environmentVariableName = ("VERSIONING_"
+//                    + java.lang.String.join(
+//                "_",
+//                *plainName.split("(?=\\p{Lu})".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+//            )
+//            .replace("\\.".toRegex(), "_")
+//                .toUpperCase())
             value = System.getenv(environmentVariableName)
         }
         return value
