@@ -2,6 +2,7 @@ package me.qoomon.gradle.gitversioning
 
 import me.qoomon.gitversioning.commons.GitRefType
 import me.qoomon.gitversioning.commons.GitSituation
+import me.qoomon.gitversioning.commons.GitSituation.Companion.newGitSituation
 import me.qoomon.gitversioning.commons.StringUtil.patternGroupValues
 import me.qoomon.gitversioning.commons.StringUtil.patternGroups
 import me.qoomon.gitversioning.commons.StringUtil.substituteText
@@ -92,22 +93,22 @@ abstract class GitVersioningPluginExtension(
             logger.debug("  head commit: " + gitSituation.rev)
             logger.debug("  head commit timestamp: " + gitSituation.getTimestamp())
             logger.debug("  head branch: " + gitSituation.getBranch())
-            logger.debug("  head tags: " + gitSituation.getTags())
+//            logger.debug("  head tags: " + gitSituation.getTags())
             logger.debug("  head description: " + gitSituation.getDescription())
         }
 
         // determine git version details
-        gitVersionDetails = getGitVersionDetails(providers, gitSituation, config)
+        gitVersionDetails = getGitVersionDetails(gitSituation, config)
         if (gitVersionDetails == null) {
             logger.warn(
                 """
                     skip - no matching ref configuration and no rev configuration defined
                     git refs:
                       branch: ${gitSituation.getBranch()}
-                      tags: ${gitSituation.getTags()}
                     defined ref configurations:"
                 """.trimIndent()
             )
+//                      tags: ${gitSituation.getTags()}
             config!!.refs.list.forEach { ref: RefPatchDescription ->
                 logger.warn("  ${ref.type.name.padEnd(6)} - pattern: ${ref.pattern}")
             }
@@ -272,14 +273,12 @@ abstract class GitVersioningPluginExtension(
             return null
         }
         val repository = repositoryBuilder.build()
-        val gitSituation = objects.newInstance<GitSituation>(repository)
-        gitSituation.handleEnvironment(
-                    repository,
-                    overrideBranch = getCommandOption(OPTION_NAME_GIT_BRANCH),
-                    overrideTag = getCommandOption(OPTION_NAME_GIT_TAG),
-                    providedRef = getCommandOption(OPTION_NAME_GIT_REF),
+        return objects.newGitSituation(
+            repository,
+            overrideBranch = getCommandOption(OPTION_NAME_GIT_BRANCH),
+            overrideTag = getCommandOption(OPTION_NAME_GIT_TAG),
+            providedRef = getCommandOption(OPTION_NAME_GIT_REF),
         )
-        return gitSituation
     }
 
     private fun getGitVersion(versionFormat: String, projectVersion: Provider<String>): Provider<String> {
@@ -378,13 +377,6 @@ abstract class GitVersioningPluginExtension(
                 .replace("\\.".toRegex(), "_")
                 .toUpperCase()
 
-//            val environmentVariableName = ("VERSIONING_"
-//                    + java.lang.String.join(
-//                "_",
-//                *plainName.split("(?=\\p{Lu})".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-//            )
-//            .replace("\\.".toRegex(), "_")
-//                .toUpperCase())
             value = System.getenv(environmentVariableName)
         }
         return value
@@ -416,13 +408,11 @@ abstract class GitVersioningPluginExtension(
         }
 
         private fun getGitVersionDetails(
-            providers: ProviderFactory,
             gitSituation: GitSituation,
             config: GitVersioningPluginConfig?
         ): GitVersionDetails? {
-            val sortedTags = providers.provider {
-                gitSituation.getTags()
-                    .sortedBy { version: String? -> DefaultArtifactVersion(version) }
+            val sortedTags = gitSituation.tags.map { tags ->
+                tags.sortedBy { DefaultArtifactVersion(it) }
             }
             for (refConfig in config!!.refs.list) {
                 when (refConfig.type) {

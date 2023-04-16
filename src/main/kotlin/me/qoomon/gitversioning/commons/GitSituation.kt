@@ -5,7 +5,6 @@ import me.qoomon.gitversioning.commons.GitUtil.branch
 import me.qoomon.gitversioning.commons.GitUtil.describe
 import me.qoomon.gitversioning.commons.GitUtil.revTimestamp
 import me.qoomon.gitversioning.commons.GitUtil.status
-import me.qoomon.gitversioning.commons.GitUtil.tagsPointAt
 import org.eclipse.jgit.errors.NoWorkTreeException
 import org.eclipse.jgit.lib.Constants
 import org.eclipse.jgit.lib.ObjectId
@@ -13,9 +12,11 @@ import org.eclipse.jgit.lib.Repository
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
 import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
+import org.gradle.kotlin.dsl.newInstance
 import org.gradle.kotlin.dsl.property
 import java.io.File
 import java.io.IOException
@@ -38,7 +39,7 @@ abstract class GitSituation @Inject constructor(
     @JvmField
     val rootDirectory: File = getWorkTree(repository)
 
-    private val head: ObjectId? = repository.resolve(Constants.HEAD)
+    val head: ObjectId? = repository.resolve(Constants.HEAD)
 
     @JvmField
     val rev: String = if (head != null) head.name else NO_COMMIT
@@ -53,9 +54,9 @@ abstract class GitSituation @Inject constructor(
     private val branch: Property<String> =
         objects.property<String>().convention(providers.provider { branch(repository) })
 
-    private var tags: Supplier<List<String>> =
-        Lazy.by { if (head != null) tagsPointAt(head, repository) else emptyList() }
-//    abstract val tags: ListProperty<String>
+    //    private var tags: Supplier<List<String>> =
+//        Lazy.by { if (head != null) tagsPointAt(head, repository) else emptyList() }
+    abstract val tags: ListProperty<String>
 
     private val clean: Supplier<Boolean> = Lazy.by { status(repository).isClean }
 //    abstract val clean2: Property<Boolean>
@@ -69,6 +70,13 @@ abstract class GitSituation @Inject constructor(
     private var description: Supplier<GitDescription> = Lazy.by { this.describe() }
 //    abstract val description2: Property<GitDescription>
 
+
+    fun init(
+        overrideBranch: String?,
+        overrideTag: String?,
+        providedRef: String?,
+    ) {
+    }
 
     /**
      * fixed version `repository.getWorkTree()`
@@ -98,11 +106,9 @@ abstract class GitSituation @Inject constructor(
     val isDetached: Boolean
         get() = branch.orNull == null
 
-    fun getTags(): List<String> = tags.get()
+//    fun getTags(): List<String> = tags.get()
 
     fun isClean(): Boolean = clean.get()
-
-//    fun getDescribeTagPattern(): Pattern = describeTagPattern
 
     fun getDescription(): GitDescription = description.get()
 
@@ -113,8 +119,7 @@ abstract class GitSituation @Inject constructor(
 
 
     @Throws(IOException::class)
-      fun handleEnvironment(
-        repository: Repository,
+    fun handleEnvironment(
         overrideBranch: String?,
         overrideTag: String?,
         providedRef: String?,
@@ -229,7 +234,7 @@ abstract class GitSituation @Inject constructor(
 
     }
 
-      fun setBranch(branch: String?) {
+    private fun setBranch(branch: String?) {
         logger.debug("override git branch with $branch")
 
         val finalBranch = if (branch != null) {
@@ -245,7 +250,7 @@ abstract class GitSituation @Inject constructor(
         this.branch.set(finalBranch)
     }
 
-      fun setTags(tags: List<String>) {
+    private fun setTags(tags: List<String>) {
         logger.debug("override git tags with single tag $tags")
 //        var tags = tags
 //        Objects.requireNonNull(tags)
@@ -254,19 +259,36 @@ abstract class GitSituation @Inject constructor(
             require(!(tag.startsWith("refs/") && !tag.startsWith("refs/tags/"))) { "invalid tag ref$tag" }
         }.map { tag: String -> tag.replaceFirst("^refs/tags/".toRegex(), "") }
 //       tags
-        this.tags = Supplier { finalTags }
+        this.tags.set(finalTags)
     }
 
-      fun addTag(tag: String) {
+    private fun addTag(tag: String) {
         logger.debug("add git tag $tag")
+        require(!(tag.startsWith("refs/") && !tag.startsWith("refs/tags/"))) { "invalid tag ref$tag" }
+        val finalTag = tag.replaceFirst("^refs/tags/".toRegex(), "")
+        this.tags.add(finalTag)
+    }
 
-          require(!(tag.startsWith("refs/") && !tag.startsWith("refs/tags/"))) { "invalid tag ref$tag" }
-          val finalTag = tag.replaceFirst("^refs/tags/".toRegex(), "")
-          val currentTags = tags
-          tags = Lazy.by {
-              val tags: MutableList<String> = ArrayList(currentTags.get())
-              tags.add(finalTag)
-              tags
-          }
+    companion object {
+        @JvmStatic
+        fun ObjectFactory.newGitSituation(
+            repository: Repository,
+            overrideBranch: String?,
+            overrideTag: String?,
+            providedRef: String?,
+        ): GitSituation {
+            return newInstance<GitSituation>(repository).apply {
+
+                tags.set(
+                    if (head != null) GitUtil.tagsPointAt(head, repository) else emptyList()
+                )
+
+                handleEnvironment(
+                    overrideBranch = overrideBranch,
+                    overrideTag = overrideTag,
+                    providedRef = providedRef,
+                )
+            }
+        }
     }
 }
