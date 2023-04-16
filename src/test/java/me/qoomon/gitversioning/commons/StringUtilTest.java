@@ -4,10 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
-import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
@@ -17,8 +15,9 @@ class StringUtilTest {
     void substituteText() {
         // Given
         String givenText = "${type}tale";
-        Map<String, Supplier<String>> givenSubstitutionMap = new HashMap<>();
-        givenSubstitutionMap.put("type", () -> "fairy");
+        Map<String, String> givenSubstitutionMap = new HashMap<>();
+
+        givenSubstitutionMap.put("type", "fairy");
 
         // When
         String outputText = StringUtil.substituteText(givenText, givenSubstitutionMap);
@@ -29,10 +28,9 @@ class StringUtilTest {
 
     @Test
     void substituteText_missingValue() {
-
         // Given
         String givenText = "${missing}tale";
-        Map<String, Supplier<String>> givenSubstitutionMap = new HashMap<>();
+        Map<String, String> givenSubstitutionMap = new HashMap<>();
 
         // When
         String outputText = StringUtil.substituteText(givenText, givenSubstitutionMap);
@@ -43,11 +41,11 @@ class StringUtilTest {
 
     @Test
     void substituteText_handle_replacement_value_with_placeholder_syntax() {
-
         // Given
         String givenText = "${version}";
-        Map<String, Supplier<String>> givenSubstitutionMap = new HashMap<>();
-        givenSubstitutionMap.put("version", () -> "${something}");
+        Map<String, String> givenSubstitutionMap = new HashMap<>();
+
+        givenSubstitutionMap.put("version", "${something}");
 
         // When
         String outputText = StringUtil.substituteText(givenText, givenSubstitutionMap);
@@ -58,10 +56,9 @@ class StringUtilTest {
 
     @Test
     void substituteText_default_value() {
-
         // Given
         String givenText = "${foo:-xxx}";
-        Map<String, Supplier<String>> givenSubstitutionMap = emptyMap();
+        Map<String, String> givenSubstitutionMap = new HashMap<>();
 
         // When
         String outputText = StringUtil.substituteText(givenText, givenSubstitutionMap);
@@ -72,11 +69,11 @@ class StringUtilTest {
 
     @Test
     void substituteText_overwrite_value() {
-
         // Given
         String givenText = "${foo:+xxx}";
-        Map<String, Supplier<String>> givenSubstitutionMap = new HashMap<>();
-        givenSubstitutionMap.put("foo", () -> "aaa");
+        Map<String, String> givenSubstitutionMap = new HashMap<>();
+
+        givenSubstitutionMap.put("foo", "aaa");
 
         // When
         String outputText = StringUtil.substituteText(givenText, givenSubstitutionMap);
@@ -85,10 +82,8 @@ class StringUtilTest {
         assertThat(outputText).isEqualTo("xxx");
     }
 
-
     @Test
     void valueGroupMap() {
-
         // Given
         Pattern givenRegex = Pattern.compile("(one) (two) (three)");
         String givenText = "one two three";
@@ -102,7 +97,6 @@ class StringUtilTest {
 
     @Test
     void valueGroupMap_nested() {
-
         // Given
         Pattern givenRegex = Pattern.compile("(one) (two (three))");
         String givenText = "one two three";
@@ -116,7 +110,6 @@ class StringUtilTest {
 
     @Test
     void valueGroupMap_namedGroup() {
-
         // Given
         Pattern givenRegex = Pattern.compile("(?<first>one) (?<second>two) (?<third>three)");
         String givenText = "one two three";
@@ -131,7 +124,6 @@ class StringUtilTest {
 
     @Test
     void valueGroupMap_namedGroupNested() {
-
         // Given
         Pattern givenRegex = Pattern.compile("(?<first>one) (?<second>two (?<third>three))");
         String givenText = "one two three";

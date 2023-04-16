@@ -2,7 +2,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     `kotlin-dsl`
-    kotlin("jvm") version embeddedKotlinVersion
 }
 
 dependencies {
@@ -17,7 +16,7 @@ val projectJvmTarget = "11"
 
 kotlin {
     jvmToolchain {
-        (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(projectJvmTarget))
+        languageVersion.set(JavaLanguageVersion.of(projectJvmTarget))
     }
 }
 

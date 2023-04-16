@@ -1,7 +1,8 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     `kotlin-dsl`
 
-    buildsrc.conventions.`kotlin-jvm`
     buildsrc.conventions.publishing
     buildsrc.conventions.`gradle-plugin`
 
@@ -31,12 +32,14 @@ gradlePlugin {
     }
 }
 
-@Suppress("UNUSED_VARIABLE", "UnstableApiUsage") // jvm test suites are incubating
+@Suppress("UNUSED_VARIABLE", "UnstableApiUsage")
 testing.suites {
 
     // configure the existing unit-test suite
     val test by getting(JvmTestSuite::class) {
         dependencies {
+            implementation(project.dependencies.gradleTestKit())
+
             implementation(project.dependencies.platform("org.junit:junit-bom:5.9.1"))
             implementation("org.junit.jupiter:junit-jupiter-api")
             implementation("org.junit.jupiter:junit-jupiter-engine")
@@ -48,7 +51,7 @@ testing.suites {
     // configure the functional-test suite (created in buildSrc convention plugin)
     val testFunctional by getting(JvmTestSuite::class) {
         dependencies {
-            implementation(project)
+//            implementation(project)
             implementation(project.dependencies.gradleTestKit())
 
             implementation(project.dependencies.platform("org.junit:junit-bom:5.9.1"))
@@ -63,9 +66,16 @@ testing.suites {
     }
 }
 
-idea {
-    module {
-        isDownloadSources = true
-        isDownloadJavadoc = false
+val projectJvmTarget = "11"
+
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(projectJvmTarget))
+    }
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+    kotlinOptions {
+        jvmTarget = projectJvmTarget
     }
 }

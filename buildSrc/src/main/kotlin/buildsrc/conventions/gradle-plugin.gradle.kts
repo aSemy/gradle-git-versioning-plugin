@@ -1,6 +1,7 @@
 package buildsrc.conventions
 
 import org.gradle.kotlin.dsl.*
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 /* Gradle plugin configuration */
 

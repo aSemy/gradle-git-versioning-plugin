@@ -2,11 +2,13 @@ package me.qoomon.gitversioning.commons;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.gradle.api.model.ObjectFactory;
+import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.IOException;
 import java.nio.file.Path;
 
 import static me.qoomon.gitversioning.commons.GitUtil.NO_COMMIT;
@@ -19,44 +21,50 @@ class GitSituationTest {
     @TempDir
     Path tempDir;
 
+    private final ObjectFactory objects = ProjectBuilder.builder().build().getObjects();
+
+    private GitSituation GitSituation(Repository repository) {
+        return objects.newInstance(GitSituation.class, repository);
+    }
+
     @Test
-    void revParse_emptyRepo() throws GitAPIException, IOException {
+    void revParse_emptyRepo() throws GitAPIException {
 
         // given
         Git git = Git.init().setInitialBranch("master").setDirectory(tempDir.toFile()).call();
 
-        GitSituation situation = new GitSituation(git.getRepository());
+        GitSituation situation = GitSituation(git.getRepository());
 
         // then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
             softly.assertThat(it.isClean()).isTrue();
-            softly.assertThat(it.getRev()).isEqualTo(NO_COMMIT);
+            softly.assertThat(it.rev).isEqualTo(NO_COMMIT);
             softly.assertThat(it.getBranch()).isEqualTo(MASTER);
             softly.assertThat(it.getTags()).isEmpty();
         }));
     }
 
     @Test
-    void revParse_nonEmptyRepo() throws GitAPIException, IOException {
+    void revParse_nonEmptyRepo() throws GitAPIException {
 
         // given
         Git git = Git.init().setInitialBranch("master").setDirectory(tempDir.toFile()).call();
 
         RevCommit givenCommit = git.commit().setMessage("initial commit").setAllowEmpty(true).call();
 
-        GitSituation situation = new GitSituation(git.getRepository());
+        GitSituation situation = GitSituation(git.getRepository());
 
         // then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
             softly.assertThat(it.isClean()).isTrue();
-            softly.assertThat(it.getRev()).isEqualTo(givenCommit.name());
+            softly.assertThat(it.rev).isEqualTo(givenCommit.name());
             softly.assertThat(it.getBranch()).isEqualTo(MASTER);
             softly.assertThat(it.getTags()).isEmpty();
         }));
     }
 
     @Test
-    void headSituation_onBranchWithTag() throws GitAPIException, IOException {
+    void headSituation_onBranchWithTag() throws GitAPIException {
 
         // Given
         Git git = Git.init().setInitialBranch(MASTER).setDirectory(tempDir.toFile()).call();
@@ -64,38 +72,38 @@ class GitSituationTest {
         String givenTag = "v1";
         git.tag().setName(givenTag).setObjectId(givenCommit).call();
 
-        GitSituation situation = new GitSituation(git.getRepository());
+        GitSituation situation = GitSituation(git.getRepository());
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
             softly.assertThat(it.isClean()).isTrue();
-            softly.assertThat(it.getRev()).isEqualTo(givenCommit.getName());
+            softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
             softly.assertThat(it.getBranch()).isEqualTo(MASTER);
             softly.assertThat(it.getTags()).containsExactly(givenTag);
         }));
     }
 
     @Test
-    void headSituation_detachedHead() throws GitAPIException, IOException {
+    void headSituation_detachedHead() throws GitAPIException {
 
         // Given
         Git git = Git.init().setInitialBranch(MASTER).setDirectory(tempDir.toFile()).call();
         RevCommit givenCommit = git.commit().setMessage("init").setAllowEmpty(true).call();
         git.checkout().setName(givenCommit.getName()).call();
 
-        GitSituation situation = new GitSituation(git.getRepository());
+        GitSituation situation = GitSituation(git.getRepository());
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
             softly.assertThat(it.isClean()).isTrue();
-            softly.assertThat(it.getRev()).isEqualTo(givenCommit.getName());
+            softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
             softly.assertThat(it.getBranch()).isNull();
             softly.assertThat(it.getTags()).isEmpty();
         }));
     }
 
     @Test
-    void headSituation_detachedHeadWithTag() throws GitAPIException, IOException {
+    void headSituation_detachedHeadWithTag() throws GitAPIException {
 
         // Given
         Git git = Git.init().setInitialBranch(MASTER).setDirectory(tempDir.toFile()).call();
@@ -104,19 +112,19 @@ class GitSituationTest {
         git.tag().setName(givenTag).setObjectId(givenCommit).call();
         git.checkout().setName(givenTag).call();
 
-        GitSituation situation = new GitSituation(git.getRepository());
+        GitSituation situation = GitSituation(git.getRepository());
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
             softly.assertThat(it.isClean()).isTrue();
-            softly.assertThat(it.getRev()).isEqualTo(givenCommit.getName());
+            softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
             softly.assertThat(it.getBranch()).isNull();
             softly.assertThat(it.getTags()).containsExactly(givenTag);
         }));
     }
 
     @Test
-    void situation_annotatedTagOnMaster() throws Exception, IOException {
+    void situation_annotatedTagOnMaster() throws Exception {
 
         // Given
         Git git = Git.init().setInitialBranch(MASTER).setDirectory(tempDir.toFile()).call();
@@ -125,12 +133,12 @@ class GitSituationTest {
         String givenTag = "v1";
         git.tag().setAnnotated(true).setName(givenTag).call();
 
-        GitSituation situation = new GitSituation(git.getRepository());
+        GitSituation situation = GitSituation(git.getRepository());
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
             softly.assertThat(it.isClean()).isTrue();
-            softly.assertThat(it.getRev()).isEqualTo(givenCommit.getName());
+            softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
             softly.assertThat(it.getBranch()).isEqualTo(MASTER);
             softly.assertThat(it.getTags()).containsExactly(givenTag);
         }));
@@ -147,12 +155,12 @@ class GitSituationTest {
         git.tag().setAnnotated(true).setName(givenTag).setObjectId(givenCommit).call();
         git.checkout().setName(givenTag).call();
 
-        GitSituation situation = new GitSituation(git.getRepository());
+        GitSituation situation = GitSituation(git.getRepository());
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
             softly.assertThat(it.isClean()).isTrue();
-            softly.assertThat(it.getRev()).isEqualTo(givenCommit.getName());
+            softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
             softly.assertThat(it.getBranch()).isNull();
             softly.assertThat(it.getTags()).containsExactly(givenTag);
         }));
@@ -168,12 +176,12 @@ class GitSituationTest {
         String givenTag = "v1";
         git.tag().setAnnotated(false).setName(givenTag).call();
 
-        GitSituation situation = new GitSituation(git.getRepository());
+        GitSituation situation = GitSituation(git.getRepository());
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
             softly.assertThat(it.isClean()).isTrue();
-            softly.assertThat(it.getRev()).isEqualTo(givenCommit.getName());
+            softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
             softly.assertThat(it.getBranch()).isEqualTo(MASTER);
             softly.assertThat(it.getTags()).containsExactly(givenTag);
         }));
@@ -190,16 +198,14 @@ class GitSituationTest {
         git.tag().setAnnotated(false).setName(givenTag).call();
         git.checkout().setName(givenTag).call();
 
-        GitSituation situation = new GitSituation(git.getRepository());
+        GitSituation situation = GitSituation(git.getRepository());
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
             softly.assertThat(it.isClean()).isTrue();
-            softly.assertThat(it.getRev()).isEqualTo(givenCommit.getName());
+            softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
             softly.assertThat(it.getBranch()).isNull();
             softly.assertThat(it.getTags()).containsExactly(givenTag);
         }));
     }
-
-
 }

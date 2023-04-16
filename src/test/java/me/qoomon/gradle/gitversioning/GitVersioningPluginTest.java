@@ -4,6 +4,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.gradle.api.Project;
+import org.gradle.api.logging.LogLevel;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
@@ -61,10 +62,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            rev = new PatchDescription() {{
-                version = "${commit}";
-            }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+        config.rev = new GitVersioningPluginConfig.PatchDescription() {{
+            version = "${commit}";
         }};
 
         // when
@@ -88,11 +88,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "branch-gitVersioning";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "branch-gitVersioning");
 
         // when
         extension.apply(config);
@@ -118,11 +116,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "${ref}-gitVersioning";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "${ref}-gitVersioning");
 
         // when
         extension.apply(config);
@@ -148,11 +144,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.tag(".*", patch -> {
-                patch.version = "${ref}-gitVersioning";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.tag(".*", patch -> patch.version = "${ref}-gitVersioning");
 
         // when
         extension.apply(config);
@@ -174,11 +168,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "a/b/c";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "a/b/c");
 
         // when
         extension.apply(config);
@@ -199,11 +191,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "${describe.tag.version.label.plus.describe.distance}";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "${describe.tag.version.label.plus.describe.distance}");
 
         // when
         extension.apply(config);
@@ -224,11 +214,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "${describe.tag.version.label.plus.describe.distance}";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "${describe.tag.version.label.plus.describe.distance}");
 
         // when
         extension.apply(config);
@@ -252,11 +240,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "${describe.tag.version.label.plus.describe.distance}";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "${describe.tag.version.label.plus.describe.distance}");
 
         // when
         extension.apply(config);
@@ -264,6 +250,7 @@ class GitVersioningPluginTest {
         // then
         assertThat(project.getVersion()).isEqualTo("677");
     }
+
     @Test
     void apply_TwoCommitsSinceLastTagGivesExpectedPlusDistanceResult() throws GitAPIException, IOException {
         // given
@@ -281,11 +268,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "${describe.tag.version.label.plus.describe.distance}";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "${describe.tag.version.label.plus.describe.distance}");
 
         // when
         extension.apply(config);
@@ -309,11 +294,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "${describe.tag.version.label}";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "${describe.tag.version.label}");
 
         // when
         extension.apply(config);
@@ -337,11 +320,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "${describe.tag.version.major}.${describe.tag.version.minor}.${describe.tag.version.patch}";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "${describe.tag.version.major}.${describe.tag.version.minor}.${describe.tag.version.patch}");
 
         // when
         extension.apply(config);
@@ -365,11 +346,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "${describe.tag.version.major}.${describe.tag.version.minor}.${describe.tag.version.patch}";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "${describe.tag.version.major}.${describe.tag.version.minor}.${describe.tag.version.patch}");
 
         // when
         extension.apply(config);
@@ -393,11 +372,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "${describe.tag.version.major}.${describe.tag.version.minor}.${describe.tag.version.patch}";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "${describe.tag.version.major}.${describe.tag.version.minor}.${describe.tag.version.patch}");
 
         // when
         extension.apply(config);
@@ -423,11 +400,9 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            refs.branch(".*", patch -> {
-                patch.version = "${describe.tag.version.major}.${describe.tag.version.minor}.${describe.tag.version.patch.next}-${describe.distance}-${ref.slug}";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.refs.branch(".*", patch -> patch.version = "${describe.tag.version.major}.${describe.tag.version.minor}.${describe.tag.version.patch.next}-${describe.distance}-${ref.slug}");
 
         // when
         extension.apply(config);
@@ -453,12 +428,10 @@ class GitVersioningPluginTest {
         GitVersioningPluginExtension extension = (GitVersioningPluginExtension) project.getExtensions()
                 .getByName("gitVersioning");
 
-        GitVersioningPluginConfig config = new GitVersioningPluginConfig() {{
-            describeTagPattern = "v2.0.*";
-            refs.branch(".*", patch -> {
-                patch.version = "${describe.tag.version.core}";
-            });
-        }};
+        GitVersioningPluginConfig config = project.getObjects().newInstance(GitVersioningPluginConfig.class);
+
+        config.describeTagPattern = "v2.0.*";
+        config.refs.branch(".*", patch -> patch.version = "${describe.tag.version.core}");
 
         // when
         extension.apply(config);

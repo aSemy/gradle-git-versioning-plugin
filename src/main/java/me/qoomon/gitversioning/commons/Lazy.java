@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
 
+//@Deprecated // replace with Gradle Provider
 public final class Lazy<T> implements Supplier<T> {
 
     private volatile Callable<T> initializer;

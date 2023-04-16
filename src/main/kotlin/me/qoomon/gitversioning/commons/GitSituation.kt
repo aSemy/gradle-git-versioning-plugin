@@ -1,0 +1,149 @@
+package me.qoomon.gitversioning.commons
+
+import me.qoomon.gitversioning.commons.GitUtil.NO_COMMIT
+import me.qoomon.gitversioning.commons.GitUtil.branch
+import me.qoomon.gitversioning.commons.GitUtil.describe
+import me.qoomon.gitversioning.commons.GitUtil.revTimestamp
+import me.qoomon.gitversioning.commons.GitUtil.status
+import me.qoomon.gitversioning.commons.GitUtil.tagsPointAt
+import org.eclipse.jgit.errors.NoWorkTreeException
+import org.eclipse.jgit.lib.Constants
+import org.eclipse.jgit.lib.ObjectId
+import org.eclipse.jgit.lib.Repository
+import org.gradle.api.logging.Logger
+import org.gradle.api.logging.Logging
+import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
+import org.gradle.api.provider.ProviderFactory
+import org.gradle.kotlin.dsl.property
+import java.io.File
+import java.io.IOException
+import java.nio.file.Files
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.util.*
+import java.util.function.Supplier
+import java.util.regex.Pattern
+import javax.inject.Inject
+
+open class GitSituation @Inject constructor(
+    private val repository: Repository,
+    private val providers: ProviderFactory,
+    private val objects: ObjectFactory,
+) {
+    protected val logger: Logger = Logging.getLogger(this::class.java)
+
+    @JvmField
+    val rootDirectory: File = getWorkTree(repository)
+
+    private val head: ObjectId? = repository.resolve(Constants.HEAD)
+
+    @JvmField
+    val rev: String = if (head != null) head.name else NO_COMMIT
+
+    private val timestamp: Provider<ZonedDateTime> = providers.provider {
+        if (head != null) {
+            revTimestamp(repository, head)
+        } else {
+            ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC)
+        }
+    }
+    private val branch: Property<String> =
+        objects.property<String>().convention(providers.provider { branch(repository) })
+
+    private var tags: Supplier<List<String>> =
+        Lazy.by { if (head != null) tagsPointAt(head, repository) else emptyList() }
+//    abstract val tags2: ListProperty<String>
+
+    private val clean: Supplier<Boolean> = Lazy.by { status(repository).isClean }
+//    abstract val clean2: Property<Boolean>
+
+    var describeTagPattern: Pattern = Pattern.compile(".*")
+        set(value) {
+            field = value
+            description = Lazy.by { this.describe() }
+        }
+
+    private var description: Supplier<GitDescription> = Lazy.by { this.describe() }
+//    abstract val description2: Property<GitDescription>
+
+
+    /**
+     * fixed version `repository.getWorkTree()`
+     * handle worktrees as well
+     *
+     * @param repository
+     * @return .git directory
+     */
+    @Throws(IOException::class)
+    private fun getWorkTree(repository: Repository): File {
+        return try {
+            repository.workTree
+        } catch (e: NoWorkTreeException) {
+            val gitDirFile = File(repository.directory, "gitdir")
+            if (gitDirFile.exists()) {
+                val gitDirPath = Files.readAllLines(gitDirFile.toPath())[0]
+                return File(gitDirPath).parentFile
+            }
+            throw e
+        }
+    }
+
+    fun getTimestamp(): ZonedDateTime = timestamp.get()
+
+    fun getBranch(): String? = branch.orNull
+
+    protected open fun setBranch(branch: String?) {
+        val finalBranch = if (branch != null) {
+            require(!branch.startsWith("refs/tags/")) { "invalid branch ref$branch" }
+            branch
+                // support default branches (heads)
+                .replaceFirst("^refs/heads/".toRegex(), "")
+                // support other refs e.g. GitHub pull requests refs/pull/1000/head
+                .replaceFirst("^refs/".toRegex(), "")
+        } else {
+            null
+        }
+        this.branch.set(finalBranch)
+    }
+
+    val isDetached: Boolean
+        get() = branch.orNull == null
+
+    fun getTags(): List<String> = tags.get()
+
+    protected open fun addTag(tag: String) {
+        require(!(tag.startsWith("refs/") && !tag.startsWith("refs/tags/"))) { "invalid tag ref$tag" }
+        val finalTag = tag.replaceFirst("^refs/tags/".toRegex(), "")
+        val currentTags = tags
+        tags = Lazy.by {
+            val tags: MutableList<String> = ArrayList(currentTags.get())
+            tags.add(finalTag)
+            tags
+        }
+    }
+
+    protected open fun setTags(tags: List<String>) {
+//        var tags = tags
+//        Objects.requireNonNull(tags)
+        val finalTags = tags.onEach { tag: String ->
+            Objects.requireNonNull(tag)
+            require(!(tag.startsWith("refs/") && !tag.startsWith("refs/tags/"))) { "invalid tag ref$tag" }
+        }.map { tag: String -> tag.replaceFirst("^refs/tags/".toRegex(), "") }
+//       tags
+        this.tags = Supplier { finalTags }
+    }
+
+    fun isClean(): Boolean = clean.get()
+
+//    fun getDescribeTagPattern(): Pattern = describeTagPattern
+
+    fun getDescription(): GitDescription = description.get()
+
+    // ----- initialization methods ------------------------------------------------------------------------------------
+
+    @Throws(IOException::class)
+    private fun describe(): GitDescription = describe(head, describeTagPattern, repository)
+}
