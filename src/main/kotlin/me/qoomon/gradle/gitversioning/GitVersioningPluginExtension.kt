@@ -91,10 +91,10 @@ abstract class GitVersioningPluginExtension(
             logger.debug("git situation:")
             logger.debug("  root directory: " + gitSituation.rootDirectory)
             logger.debug("  head commit: " + gitSituation.rev)
-            logger.debug("  head commit timestamp: " + gitSituation.getTimestamp())
-            logger.debug("  head branch: " + gitSituation.getBranch())
+//            logger.debug("  head commit timestamp: " + gitSituation.getTimestamp())
+//            logger.debug("  head branch: " + gitSituation.getBranch())
 //            logger.debug("  head tags: " + gitSituation.getTags())
-            logger.debug("  head description: " + gitSituation.getDescription())
+//            logger.debug("  head description: " + gitSituation.getDescription())
         }
 
         // determine git version details
@@ -104,10 +104,10 @@ abstract class GitVersioningPluginExtension(
                 """
                     skip - no matching ref configuration and no rev configuration defined
                     git refs:
-                      branch: ${gitSituation.getBranch()}
                     defined ref configurations:"
                 """.trimIndent()
             )
+//                      branch: ${gitSituation.getBranch()}
 //                      tags: ${gitSituation.getTags()}
             config!!.refs.list.forEach { ref: RefPatchDescription ->
                 logger.warn("  ${ref.type.name.padEnd(6)} - pattern: ${ref.pattern}")
@@ -428,9 +428,9 @@ abstract class GitVersioningPluginExtension(
 
                     GitRefType.BRANCH -> {
                         if (!gitSituation.isDetached) {
-                            val branch = gitSituation.getBranch()
+                            val branch = gitSituation.branch.get()
                             if (refConfig.pattern == null || refConfig.pattern.matcher(branch).matches()) {
-                                return GitVersionDetails(gitSituation.rev, GitRefType.BRANCH, branch!!, refConfig)
+                                return GitVersionDetails(gitSituation.rev, GitRefType.BRANCH, branch, refConfig)
                             }
                         }
                     }
@@ -454,16 +454,17 @@ abstract class GitVersioningPluginExtension(
             val properties: MapProperty<String, String> = objects.mapProperty()
             properties.put("git.commit", gitVersionDetails.commit)
             properties.put("git.commit.short", gitVersionDetails.commit.substring(0, 7))
-            val headCommitDateTime = gitSituation.getTimestamp()
-            properties.put("git.commit.timestamp", headCommitDateTime.toEpochSecond().toString())
+            val headCommitDateTime = gitSituation.timestamp
+            properties.put("git.commit.timestamp", headCommitDateTime.map { it.toEpochSecond().toString() })
             properties.put(
                 "git.commit.timestamp.datetime",
-                if (headCommitDateTime.toEpochSecond() > 0) {
-                    headCommitDateTime.format(DateTimeFormatter.ISO_INSTANT)
-                } else {
-                    "0000-00-00T00:00:00Z"
-                }
-            )
+                headCommitDateTime.map { time ->
+                    if (time.toEpochSecond() > 0) {
+                        time.format(DateTimeFormatter.ISO_INSTANT)
+                    } else {
+                        "0000-00-00T00:00:00Z"
+                    }
+                })
             val refName = gitVersionDetails.refName
             val refNameSlug = slugify(refName)
             properties.put("git.ref", refName)
@@ -500,7 +501,7 @@ private fun generateGlobalFormatPlaceholderMap(
     val hash = providers.provider { gitSituation.rev }
     placeholderMap.put("commit", hash)
     placeholderMap.put("commit.short", hash.map { it.substring(0, 7) })
-    val headCommitDateTime = providers.provider { gitSituation.getTimestamp() }
+    val headCommitDateTime = gitSituation.timestamp
     //@formatter:off
     placeholderMap.put("commit.timestamp", headCommitDateTime.map { it.toEpochSecond().toString() })
     placeholderMap.put("commit.timestamp.year", headCommitDateTime.map { it.year.toString() })
@@ -534,12 +535,12 @@ private fun generateGlobalFormatPlaceholderMap(
     }
 
     // dirty
-    val dirty = providers.provider { !gitSituation.isClean() }
+    val dirty = !gitSituation.clean
     placeholderMap.put("dirty", dirty.map { if (it) "-DIRTY" else "" })
     placeholderMap.put("dirty.snapshot", dirty.map { if (it) "-SNAPSHOT" else "" })
 
     // describe
-    val description = providers.provider { gitSituation.getDescription() }
+    val description = gitSituation.description
     placeholderMap.put("describe", description.map { it.toString() })
     val descriptionTag = description.map { it.tag }
     placeholderMap.put("describe.tag", descriptionTag)
@@ -621,3 +622,6 @@ private fun generateGlobalFormatPlaceholderMap(
     }
     return placeholderMap
 }
+
+private operator fun Provider<Boolean>.not(): Provider<Boolean> =
+    map { !it }

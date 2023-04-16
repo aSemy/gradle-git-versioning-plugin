@@ -43,9 +43,9 @@ class GitSituationTest {
 
         // then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
-            softly.assertThat(it.isClean()).isTrue();
+            softly.assertThat(it.getClean().getOrNull()).isTrue();
             softly.assertThat(it.rev).isEqualTo(NO_COMMIT);
-            softly.assertThat(it.getBranch()).isEqualTo(MASTER);
+            softly.assertThat(it.getBranch().getOrNull()).isEqualTo(MASTER);
             softly.assertThat(it.getTags().getOrNull()).isEmpty();
         }));
     }
@@ -62,9 +62,9 @@ class GitSituationTest {
 
         // then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
-            softly.assertThat(it.isClean()).isTrue();
+            softly.assertThat(it.getClean().getOrNull()).isTrue();
             softly.assertThat(it.rev).isEqualTo(givenCommit.name());
-            softly.assertThat(it.getBranch()).isEqualTo(MASTER);
+            softly.assertThat(it.getBranch().getOrNull()).isEqualTo(MASTER);
             softly.assertThat(it.getTags().getOrNull()).isEmpty();
         }));
     }
@@ -82,9 +82,9 @@ class GitSituationTest {
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
-            softly.assertThat(it.isClean()).isTrue();
+            softly.assertThat(it.getClean().getOrNull()).isTrue();
             softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
-            softly.assertThat(it.getBranch()).isEqualTo(MASTER);
+            softly.assertThat(it.getBranch().getOrNull()).isEqualTo(MASTER);
             softly.assertThat(it.getTags().getOrNull()).containsExactly(givenTag);
         }));
     }
@@ -101,9 +101,9 @@ class GitSituationTest {
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
-            softly.assertThat(it.isClean()).isTrue();
+            softly.assertThat(it.getClean().getOrNull()).isTrue();
             softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
-            softly.assertThat(it.getBranch()).isNull();
+            softly.assertThat(it.getBranch().getOrNull()).isNull();
             softly.assertThat(it.getTags().getOrNull()).isEmpty();
         }));
     }
@@ -122,9 +122,9 @@ class GitSituationTest {
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
-            softly.assertThat(it.isClean()).isTrue();
+            softly.assertThat(it.getClean().getOrNull()).isTrue();
             softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
-            softly.assertThat(it.getBranch()).isNull();
+            softly.assertThat(it.getBranch().getOrNull()).isNull();
             softly.assertThat(it.getTags().getOrNull()).containsExactly(givenTag);
         }));
     }
@@ -143,9 +143,9 @@ class GitSituationTest {
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
-            softly.assertThat(it.isClean()).isTrue();
+            softly.assertThat(it.getClean().getOrNull()).isTrue();
             softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
-            softly.assertThat(it.getBranch()).isEqualTo(MASTER);
+            softly.assertThat(it.getBranch().getOrNull()).isEqualTo(MASTER);
             softly.assertThat(it.getTags().getOrNull()).containsExactly(givenTag);
         }));
     }
@@ -165,9 +165,9 @@ class GitSituationTest {
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
-            softly.assertThat(it.isClean()).isTrue();
+            softly.assertThat(it.getClean().getOrNull()).isTrue();
             softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
-            softly.assertThat(it.getBranch()).isNull();
+            softly.assertThat(it.getBranch().getOrNull()).isNull();
             softly.assertThat(it.getTags().getOrNull()).containsExactly(givenTag);
         }));
     }
@@ -186,9 +186,9 @@ class GitSituationTest {
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
-            softly.assertThat(it.isClean()).isTrue();
+            softly.assertThat(it.getClean().getOrNull()).isTrue();
             softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
-            softly.assertThat(it.getBranch()).isEqualTo(MASTER);
+            softly.assertThat(it.getBranch().getOrNull()).isEqualTo(MASTER);
             softly.assertThat(it.getTags().getOrNull()).containsExactly(givenTag);
         }));
     }
@@ -208,9 +208,9 @@ class GitSituationTest {
 
         // Then
         assertThat(situation).satisfies(it -> assertSoftly(softly -> {
-            softly.assertThat(it.isClean()).isTrue();
+            softly.assertThat(it.getClean().getOrNull()).isTrue();
             softly.assertThat(it.rev).isEqualTo(givenCommit.getName());
-            softly.assertThat(it.getBranch()).isNull();
+            softly.assertThat(it.getBranch().getOrNull()).isNull();
             softly.assertThat(it.getTags().getOrNull()).containsExactly(givenTag);
         }));
     }

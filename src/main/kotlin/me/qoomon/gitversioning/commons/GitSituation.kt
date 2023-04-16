@@ -25,7 +25,6 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.*
-import java.util.function.Supplier
 import java.util.regex.Pattern
 import javax.inject.Inject
 
@@ -44,39 +43,28 @@ abstract class GitSituation @Inject constructor(
     @JvmField
     val rev: String = if (head != null) head.name else NO_COMMIT
 
-    private val timestamp: Provider<ZonedDateTime> = providers.provider {
+    val timestamp: Provider<ZonedDateTime> = providers.provider {
         if (head != null) {
             revTimestamp(repository, head)
         } else {
             ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC)
         }
     }
-    private val branch: Property<String> =
+
+    val branch: Property<String> =
         objects.property<String>().convention(providers.provider { branch(repository) })
 
-    //    private var tags: Supplier<List<String>> =
-//        Lazy.by { if (head != null) tagsPointAt(head, repository) else emptyList() }
     abstract val tags: ListProperty<String>
 
-    private val clean: Supplier<Boolean> = Lazy.by { status(repository).isClean }
-//    abstract val clean2: Property<Boolean>
+    abstract val clean: Property<Boolean>
 
     var describeTagPattern: Pattern = Pattern.compile(".*")
         set(value) {
             field = value
-            description = Lazy.by { this.describe() }
+            description.set(describe())
         }
 
-    private var description: Supplier<GitDescription> = Lazy.by { this.describe() }
-//    abstract val description2: Property<GitDescription>
-
-
-    fun init(
-        overrideBranch: String?,
-        overrideTag: String?,
-        providedRef: String?,
-    ) {
-    }
+    abstract val description: Property<GitDescription>
 
     /**
      * fixed version `repository.getWorkTree()`
@@ -99,18 +87,8 @@ abstract class GitSituation @Inject constructor(
         }
     }
 
-    fun getTimestamp(): ZonedDateTime = timestamp.get()
-
-    fun getBranch(): String? = branch.orNull
-
     val isDetached: Boolean
         get() = branch.orNull == null
-
-//    fun getTags(): List<String> = tags.get()
-
-    fun isClean(): Boolean = clean.get()
-
-    fun getDescription(): GitDescription = description.get()
 
     // ----- initialization methods ------------------------------------------------------------------------------------
 
@@ -282,6 +260,12 @@ abstract class GitSituation @Inject constructor(
                 tags.set(
                     if (head != null) GitUtil.tagsPointAt(head, repository) else emptyList()
                 )
+
+                clean.set(
+                    status(repository).isClean
+                )
+
+                description.set(describe())
 
                 handleEnvironment(
                     overrideBranch = overrideBranch,
